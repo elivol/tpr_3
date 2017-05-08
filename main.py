@@ -16,7 +16,7 @@ class MainWindow():
         fra.grid(row=0, column=0, columnspan=4, rowspan=2)
 
         # Выпадающие листы с размерностью матрицы
-        entry = [i for i in range(1, 10, 1)]
+        entry = [i for i in range(2, 11, 1)]
         param_l = Label(root, text='Количество параметров h')
         param = ttk.Combobox(root, values=entry, height=8, width=10, state='readonly')
         param.set(entry[0])
@@ -57,6 +57,8 @@ class InputMatrix():
     col = 1
     row = 1
     matrix_entry = []
+    from_point = 0
+    to_point = 0
     flag = False
 
     def __init__(self, row, col, method):
@@ -105,8 +107,100 @@ class InputMatrix():
         # Кнопки сохранения и загрузки конфигурации
         save_config_btn = Button(win, text='Сохранить конфигурацию', bg='#dcf7dc')
         load_config_btn = Button(win, text='Загрузить конфигурацию', bg='#dcf7dc')
-        save_config_btn.grid(row=3 + self.row + 6, column=self.col // 2, pady=5)
-        load_config_btn.grid(row=3 + self.row + 6, column=self.col // 2 + 2, pady=5)
+        save_config_btn.grid(row=8 + self.row, column=self.col // 2, pady=5)
+        load_config_btn.grid(row=8 + self.row, column=self.col // 2 + 2, pady=5)
+
+        def show_solution_pref(event):
+            matrix = np.zeros((self.row, self.col), dtype=float)
+            from_point = 0
+            to_point = 0
+
+            for i in range(self.row):
+                for j in range(self.col):
+                    if self.matrix_entry[i][j].get():
+                        try:
+                            matrix[i, j] = float(self.matrix_entry[i][j].get())
+                        except ValueError:
+                            self.flag = True
+                            messagebox.showwarning("Ошибка", "Данные введены неверно!")
+                            return
+                    else:
+                        self.flag = True
+                        messagebox.showwarning("Ошибка", "Данные введены неверно!")
+                        return
+
+            # Вызов нужного окна для решения задачи
+            SolutionPreference(matrix)
+
+        # Связывание виджета, события и функции
+        do_btn.bind('<Button-1>', show_solution_pref)
+        #save_config_btn.bind('<Button-1>', save_config)
+        #load_config_btn.bind('<Button-1>', load_config)
+
+
+class SolutionPreference():
+    matrix = None
+
+    def __init__(self, matrix):
+
+        # Установка свойств
+        self.matrix = matrix
+
+        # Решение задачи
+        solution = preference(matrix)
+        row_matrix =matrix.shape[0]
+        col_matrix = matrix.shape[1]
+
+        # Создание дочернего окна
+        win = Toplevel(root, relief='raised')
+        win.title('Вывод решения')
+
+        # Виджет шапка
+        fra = Frame(win, width=200, height=20, bg='#dcf7dc')
+        header = Label(fra, text='Решение по методу превосходства', bg='#dcf7dc', justify='center')
+        header.grid()
+        fra.grid(row=0, column=0, columnspan=row_matrix, padx=3)
+
+        # ШАГ 1
+        Label(win, text='Шаг 1', bg='#dcf7dc').grid(row=1, column=0, pady=3)
+        Label(win, text='Преобразуем матрицу оценок по формуле '
+                        '(где M-количество параметров h)').grid(row=2,
+                                                                column=0,
+                                                                columnspan=col_matrix)
+
+        Label(win, text='M-a[ij]', fg='red').grid(row=3, column=0, columnspan=col_matrix)
+
+        # Вывод матрицы
+        for i in range(row_matrix):
+            for j in range(col_matrix):
+                Label(win, text=str(solution[0][i, j]), fg='blue').grid(row=4+i, column=j, pady=3)
+
+        ttk.Separator(win, orient='vertical').grid(row=1, column=col_matrix+1, rowspan=row_matrix+5, sticky='ns')
+
+        # ШАГ 2
+        Label(win, text='Шаг 2', bg='#dcf7dc').grid(row=1, column=col_matrix+2)
+        Label(win, text='Найдем матрицу-столбец суммы оценок по строке').grid(row=2,
+                                                                              column=col_matrix+2)
+
+        # Вывод столбца сумм
+        for i in range(row_matrix):
+            Label(win, text=str(solution[1][i]), fg='blue').grid(row=4+i, column=col_matrix+2)
+
+        Label(win, text='Сумма всех оценок: ').grid(row=4 + row_matrix, column=col_matrix + 2)
+        Label(win, text=str(solution[1].sum()), fg='blue').grid(row=5 + row_matrix, column=col_matrix + 2)
+
+        ttk.Separator(win, orient='vertical').grid(row=1, column=col_matrix+5, rowspan=row_matrix+5, sticky='ns')
+
+        # ШАГ 3
+        Label(win, text='Шаг 3', bg='#dcf7dc').grid(row=1, column=col_matrix+6)
+        Label(win, text='Найдем коэффициенты важности как отношение оценки параметра к сумме всех оценок').grid(row=2,
+                                                                              column=col_matrix + 7)
+        # Вывод коэффициентов важности
+        for i in range(row_matrix):
+            Label(win, text=str(solution[2][i]), fg='blue').grid(row=4+i, column=col_matrix + 7)
+
+        Label(win, text='Наиболее важным критерием является критерий со значением '+str(solution[2].min())).grid(
+            row=4+row_matrix, column=col_matrix+7)
 
 win = MainWindow()
 root.mainloop()
